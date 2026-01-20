@@ -13,9 +13,8 @@ from bs4 import BeautifulSoup
 
 from homeassistant.components.device_tracker import PLATFORM_SCHEMA
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
+# CONF_URL, CONF_PASSWORD 등을 여기서 가져오지 않고 const.py에서 가져옵니다.
 from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_URL,
     CONF_NAME,
     CONF_MAC,
 )
@@ -29,8 +28,11 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
+# const.py에서 정의된 커스텀 키 값들을 가져옵니다.
 from .const import (
-    CONF_ID,
+    CONF_URL,       # iptime_url
+    CONF_ID,        # iptime_id
+    CONF_PASSWORD,  # iptime_pw
     CONF_TARGET,
     DEFAULT_INTERVAL,
     HOSTINFO_URN,
@@ -53,6 +55,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# 설정 유효성 검사 (사용자의 const.py 키 값 적용)
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_URL): cv.string,
@@ -70,11 +73,11 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
-
 async def async_setup_scanner(
     hass: HomeAssistant, config: dict, async_see, discovery_info=None
 ):
     """Set up the device tracker."""
+    # const.py의 키 값을 사용하여 설정 로드
     url = config.get(CONF_URL)
     user_id = config.get(CONF_ID)
     user_pw = config.get(CONF_PASSWORD)
@@ -85,7 +88,6 @@ async def async_setup_scanner(
 
     api = IPTimeAPI(hass, url, user_id, user_pw)
     
-    # Coordinator 초기화: 데이터 업데이트 관리
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
@@ -94,18 +96,14 @@ async def async_setup_scanner(
         update_interval=scan_interval,
     )
 
-    # 최초 데이터 갱신
     await coordinator.async_refresh()
 
     sensors = [IPTimeSensor(target[CONF_NAME], target[CONF_MAC], api) for target in targets]
 
     @callback
     async def async_update_devices():
-        """코디네이터 업데이트 후 디바이스 상태를 HA에 알림"""
         for sensor in sensors:
-            # 센서 내부 로직으로 상태 결정 (Not Home 카운트 등)
             sensor.update_state_from_coordinator()
-            
             await async_see(
                 mac=f"{sensor.state_attributes['iptime_url']}_{sensor._target_mac}",
                 host_name=sensor.name,
@@ -114,10 +112,7 @@ async def async_setup_scanner(
                 source_type="ipTIME_Tracker",
             )
 
-    # 코디네이터에 리스너 등록 (데이터 변경 시 호출)
     coordinator.async_add_listener(async_update_devices)
-    
-    # 최초 실행 (리스너 등록 후 즉시 한 번 실행)
     await async_update_devices()
 
     return True
@@ -127,7 +122,6 @@ class IPTimeAPI:
     """ipTIME API Class."""
 
     def __init__(self, hass: HomeAssistant, url: str, user_id: str, user_pw: str):
-        """Initialize the ipTIME API."""
         self._hass = hass
         self._user_id = user_id
         self._user_pw = user_pw
@@ -154,7 +148,6 @@ class IPTimeAPI:
         self.efm_session_id = None
 
     async def async_update(self):
-        """Fetch data from API."""
         try:
             if self.efm_session_id:
                 if self._beta_ui:
@@ -165,7 +158,6 @@ class IPTimeAPI:
                 else:
                     self.result = await self.wlan_check()
             else:
-                # 로그인 및 초기 설정
                 if await self.verify_beta_ui():
                     _LOGGER.info(f"[ipTIME-BetaUI] {self._url}")
                     self._beta_ui = True
@@ -184,10 +176,6 @@ class IPTimeAPI:
                         if await self.login():
                             await self.check_mesh()
                             self.result = await self.wlan_check()
-                
-                # 모바일 검증 실패 시 PC 모드 시도 로직이 원본에 있었으므로 유지 고려
-                # (위 로직은 원본 흐름을 간결하게 정리함)
-
             return self.result
 
         except Exception as err:
@@ -195,14 +183,12 @@ class IPTimeAPI:
             raise UpdateFailed(f"Error communicating with ipTIME: {err}") from err
 
     async def _request(self, method, url, **kwargs):
-        """Helper to run requests in executor."""
         return await self._hass.async_add_executor_job(
             lambda: requests.request(method, url, timeout=TIME_OUT, **kwargs)
         )
 
     async def verify_beta_ui(self):
         try:
-            # URL 변경 체크 로직
             url = self._url + BETA_UI_URN + "flutter_bootstrap.js"
             response = await self._request("GET", url, headers=self.headers)
             if "/cgi/service.cgi" in response.text:
@@ -273,7 +259,7 @@ class IPTimeAPI:
         except Exception as e:
             _LOGGER.error(f"{self._url}: Verify Mobile Error: {e}")
             self._ismobile = False
-            return False # 원본 로직 유지
+            return False
 
     async def check_mesh(self):
         url = self._url + MESH_URN
@@ -337,7 +323,6 @@ class IPTimeAPI:
         data = {"username": self._user_id, "passwd": self._user_pw}
         try:
             response = await self._request("POST", url, headers=self.headers, data=data)
-            # 모바일 리다이렉션 체크 로직 간소화
             if 'location = "/";' in response.text:
                 await self.verify_mobile()
                 return False
@@ -372,14 +357,12 @@ class IPTimeAPI:
         result_dict = {}
         cookies = {"efm_session_id": self.efm_session_id}
         
-        # 2.4GHz & 5GHz Check
         for url, band in [(self._url + WLAN_2G_URN, "2.4GHz"), (self._url + WLAN_5G_URN, "5GHz")]:
             try:
                 response = await self._request("GET", url, headers=self.headers, cookies=cookies)
                 soup = BeautifulSoup(response.text, "html.parser")
                 result_dict.update(self.device_parsing(soup.find_all("tr"), band))
             except Exception:
-                # 세션 에러 등으로 판단
                 await self.logout()
                 return {"session": False}
 
@@ -387,7 +370,7 @@ class IPTimeAPI:
             try:
                 result_dict.update(await self.get_mesh_station())
             except Exception:
-                pass # Mesh 실패해도 기존 결과 반환 시도 혹은 로그아웃
+                pass
 
         return result_dict
 
@@ -435,7 +418,6 @@ class IPTimeAPI:
                 "stay_time": f"{days}일 {h}시간 {m}분 {s}초",
                 "rssi": rss,
                 "state": "not_home" if rss < RSS_LIMIT else "home",
-                # 추가 정보 저장 가능
             }
         return result_dict
 
@@ -446,7 +428,6 @@ class IPTimeAPI:
         for url, band in [(self._url + M_WLAN_2G_URN, "2.4GHz"), (self._url + M_WLAN_5G_URN, "5GHz")]:
             try:
                 response = await self._request("GET", url, headers=self.headers, cookies=cookies)
-                # JSON 파싱 시도
                 try:
                     data = response.json()
                 except ValueError:
@@ -504,7 +485,6 @@ class IPTimeAPI:
         for device in response_list:
             tds = device.find_all("td")
             if len(tds) == 4:
-                # IP 추출
                 ip_match = re.search(r"\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}", tds[3].text)
                 ip = ip_match.group() if ip_match else "N/A"
                 
@@ -537,7 +517,6 @@ class IPTimeSensor:
     """Representation of a Sensor."""
 
     def __init__(self, name, mac, api) -> None:
-        """Initialize the sensor."""
         self._state = "N/A"
         self._entity_id = name
         self._target_mac = mac.replace(":", "-")
@@ -563,10 +542,8 @@ class IPTimeSensor:
         return self._state_attributes
 
     def update_state_from_coordinator(self):
-        """Update state based on API result stored in API instance."""
         result_dict = self._api.result
 
-        # 기본 속성 설정
         data = {
             "name": self._entity_id,
             "mac_address": self._target_mac,
@@ -574,9 +551,7 @@ class IPTimeSensor:
         }
 
         if result_dict:
-            # 세션 만료 체크 (API에서 session키로 관리)
             if result_dict.get("session") is False:
-                 # 세션이 끊겼을 때는 상태를 변경하지 않고 리턴하거나 N/A 처리
                  return
 
             self.error_count = 0
@@ -586,22 +561,18 @@ class IPTimeSensor:
                 self.not_home_count = 0
                 self._state = device_info.get("state", "home")
                 
-                # 속성 업데이트
                 data.update({
                     "stay_time": device_info.get("stay_time", "N/A"),
                     "band": device_info.get("band", "N/A"),
                     "ip": device_info.get("ip", "N/A"),
                     "rssi": device_info.get("rssi", "N/A"),
-                    # 필요한 경우 추가 속성 매핑
                 })
             else:
-                # 목록에 없음 -> Not Home 처리 (디바운싱 적용)
                 if self.not_home_count < self.not_home_threshold:
                     self.not_home_count += 1
                 else:
                     self._state = "not_home"
                 
-                # Not Home일 때 속성 초기화
                 data.update({
                     "stay_time": "N/A",
                     "band": "N/A",
@@ -609,7 +580,6 @@ class IPTimeSensor:
                     "rssi": "N/A",
                 })
         else:
-            # 결과가 아예 없을 때 (API 에러 등)
             if self.error_count < self.error_threshold:
                 self.error_count += 1
             else:
