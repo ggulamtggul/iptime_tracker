@@ -13,7 +13,6 @@ from bs4 import BeautifulSoup
 
 from homeassistant.components.device_tracker import PLATFORM_SCHEMA
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
-# CONF_URL, CONF_PASSWORD 등을 여기서 가져오지 않고 const.py에서 가져옵니다.
 from homeassistant.const import (
     CONF_NAME,
     CONF_MAC,
@@ -28,11 +27,10 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
-# const.py에서 정의된 커스텀 키 값들을 가져옵니다.
 from .const import (
-    CONF_URL,       # iptime_url
-    CONF_ID,        # iptime_id
-    CONF_PASSWORD,  # iptime_pw
+    CONF_URL,
+    CONF_ID,
+    CONF_PASSWORD,
     CONF_TARGET,
     DEFAULT_INTERVAL,
     HOSTINFO_URN,
@@ -55,7 +53,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# 설정 유효성 검사 (사용자의 const.py 키 값 적용)
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_URL): cv.string,
@@ -77,7 +74,6 @@ async def async_setup_scanner(
     hass: HomeAssistant, config: dict, async_see, discovery_info=None
 ):
     """Set up the device tracker."""
-    # const.py의 키 값을 사용하여 설정 로드
     url = config.get(CONF_URL)
     user_id = config.get(CONF_ID)
     user_pw = config.get(CONF_PASSWORD)
@@ -100,19 +96,23 @@ async def async_setup_scanner(
 
     sensors = [IPTimeSensor(target[CONF_NAME], target[CONF_MAC], api) for target in targets]
 
-    @callback
     async def async_update_devices():
+        """코디네이터 업데이트 후 디바이스 상태를 HA에 알림"""
         for sensor in sensors:
             sensor.update_state_from_coordinator()
             await async_see(
-                mac=f"{sensor.state_attributes['iptime_url']}_{sensor._target_mac}",
+                mac=f"{sensor.state_attributes.get('iptime_url', 'iptime')}_{sensor._target_mac}",
                 host_name=sensor.name,
                 location_name=sensor.state,
                 attributes=sensor.state_attributes,
                 source_type="ipTIME_Tracker",
             )
 
-    coordinator.async_add_listener(async_update_devices)
+    @callback
+    def _update_listener():
+        hass.async_create_task(async_update_devices())
+
+    coordinator.async_add_listener(_update_listener)
     await async_update_devices()
 
     return True
@@ -128,8 +128,10 @@ class IPTimeAPI:
         self._ismobile = False
         self._ismesh = False
         self._beta_ui = False
+        
+        # 초기값을 None으로 설정하여 '데이터 없음'과 '빈 목록'을 구분
+        self.result = None 
 
-        self.result = {}
         if not url.startswith("http"):
             self._url = f"http://{url}"
         else:
@@ -146,6 +148,16 @@ class IPTimeAPI:
         self.json_headers["Content-type"] = "application/json; charset=utf-8"
 
         self.efm_session_id = None
+
+    def _request_sync(self, method, url, **kwargs):
+        response = requests.request(method, url, timeout=TIME_OUT, **kwargs)
+        _ = response.text
+        return response
+
+    async def _request(self, method, url, **kwargs):
+        return await self._hass.async_add_executor_job(
+            lambda: self._request_sync(method, url, **kwargs)
+        )
 
     async def async_update(self):
         try:
@@ -181,11 +193,6 @@ class IPTimeAPI:
         except Exception as err:
             _LOGGER.error(f"Error communicating with ipTIME: {err}")
             raise UpdateFailed(f"Error communicating with ipTIME: {err}") from err
-
-    async def _request(self, method, url, **kwargs):
-        return await self._hass.async_add_executor_job(
-            lambda: requests.request(method, url, timeout=TIME_OUT, **kwargs)
-        )
 
     async def verify_beta_ui(self):
         try:
@@ -550,39 +557,46 @@ class IPTimeSensor:
             "iptime_url": self._api._url,
         }
 
-        if result_dict:
-            if result_dict.get("session") is False:
-                 return
-
-            self.error_count = 0
-            
-            if self._target_mac in result_dict:
-                device_info = result_dict[self._target_mac]
-                self.not_home_count = 0
-                self._state = device_info.get("state", "home")
-                
-                data.update({
-                    "stay_time": device_info.get("stay_time", "N/A"),
-                    "band": device_info.get("band", "N/A"),
-                    "ip": device_info.get("ip", "N/A"),
-                    "rssi": device_info.get("rssi", "N/A"),
-                })
-            else:
-                if self.not_home_count < self.not_home_threshold:
-                    self.not_home_count += 1
-                else:
-                    self._state = "not_home"
-                
-                data.update({
-                    "stay_time": "N/A",
-                    "band": "N/A",
-                    "ip": "N/A",
-                    "rssi": "N/A",
-                })
-        else:
+        # 1. API가 한 번도 실행되지 않았거나 에러 상태(None)인 경우 -> N/A
+        if result_dict is None:
             if self.error_count < self.error_threshold:
                 self.error_count += 1
             else:
                 self._state = "N/A"
+            self._state_attributes = data
+            return
+
+        # 2. 세션 만료 등의 명시적 실패 -> 상태 유지 (return)
+        if result_dict.get("session") is False:
+             return
+
+        # 3. 정상 응답 (빈 딕셔너리 {} 포함) -> 로직 수행
+        self.error_count = 0
+        
+        if self._target_mac in result_dict:
+            # 목록에 있음 -> Home (단, RSSI 기반 로직이 있다면 따름)
+            device_info = result_dict[self._target_mac]
+            self.not_home_count = 0
+            self._state = device_info.get("state", "home")
+            
+            data.update({
+                "stay_time": device_info.get("stay_time", "N/A"),
+                "band": device_info.get("band", "N/A"),
+                "ip": device_info.get("ip", "N/A"),
+                "rssi": device_info.get("rssi", "N/A"),
+            })
+        else:
+            # 목록에 없음 (빈 목록 포함) -> Not Home
+            if self.not_home_count < self.not_home_threshold:
+                self.not_home_count += 1
+            else:
+                self._state = "not_home"
+            
+            data.update({
+                "stay_time": "N/A",
+                "band": "N/A",
+                "ip": "N/A",
+                "rssi": "N/A",
+            })
 
         self._state_attributes = data
