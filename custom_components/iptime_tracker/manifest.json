@@ -1,8 +1,8 @@
 {
   "domain": "iptime_tracker",
   "name": "ipTIME Tracker",
-  "documentation": "https://github.com/junskr/iptime_tracker",
-  "issue_tracker": "https://github.com/junskr/iptime_tracker/issues",
+  "documentation": "https://github.com/ggulamtggul/iptime_tracker",
+  "issue_tracker": "https://github.com/ggulamtggul/iptime_tracker/issues",
   "codeowners": ["@junskr"],
   "requirements": ["beautifulsoup4>=4.9.3", "requests>=2.25.1"],
   "iot_class": "local_polling",
