@@ -1,7 +1,7 @@
 """Support for ipTIME Tracker."""
 from __future__ import annotations
 
-from homeassistant.components.device_tracker import SourceType, TrackerEntity
+from homeassistant.components.device_tracker import ScannerEntity, SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -16,15 +16,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up ipTIME Tracker based on a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-
-    # 이미 추가된 기기 추적용
     created_devices = set()
 
     @callback
     def _create_entities():
         """Create entities for new devices."""
         new_entities = []
-        # 코디네이터 데이터(MAC 목록)를 순회
         if coordinator.data:
             for mac, info in coordinator.data.items():
                 if mac == "session": continue
@@ -35,22 +32,21 @@ async def async_setup_entry(
         if new_entities:
             async_add_entities(new_entities)
 
-    # 데이터가 업데이트될 때마다 신규 기기 확인
     entry.async_on_unload(coordinator.async_add_listener(_create_entities))
-    
-    # 최초 실행
     _create_entities()
 
 
-class IPTimeTrackerEntity(CoordinatorEntity, TrackerEntity):
+class IPTimeTrackerEntity(CoordinatorEntity, ScannerEntity):
     """Representation of an ipTIME device."""
 
     def __init__(self, coordinator, mac, info):
         """Initialize the entity."""
         super().__init__(coordinator)
         self._mac = mac
+        # 고유 ID 설정 (MAC 주소 활용)
         self._attr_unique_id = mac
-        self._attr_name = mac  # 기본 이름은 MAC (사용자가 UI에서 변경 가능)
+        # 기본 이름 설정 (추후 UI에서 변경 가능)
+        self._attr_name = mac
         
     @property
     def source_type(self) -> SourceType:
@@ -61,7 +57,7 @@ class IPTimeTrackerEntity(CoordinatorEntity, TrackerEntity):
     def is_connected(self) -> bool:
         """Return true if the device is connected to the network."""
         if not self.coordinator.data or self.coordinator.data.get("session") is False:
-            return False # 연결 끊김 처리 (원하면 마지막 상태 유지 로직 추가 가능)
+            return False
         
         device_info = self.coordinator.data.get(self._mac)
         if device_info:
@@ -69,17 +65,29 @@ class IPTimeTrackerEntity(CoordinatorEntity, TrackerEntity):
         return False
 
     @property
-    def extra_state_attributes(self):
-        """Return optional attributes."""
+    def ip_address(self) -> str | None:
+        """Return the primary ip address of the device."""
         if self.coordinator.data and (info := self.coordinator.data.get(self._mac)):
-            return {
-                "ip": info.get("ip"),
-                "band": info.get("band"),
-                "rssi": info.get("rssi"),
-            }
-        return {}
+            return info.get("ip")
+        return None
 
     @property
     def mac_address(self) -> str:
         """Return the mac address of the device."""
         return self._mac.replace("-", ":")
+
+    @property
+    def hostname(self) -> str | None:
+        """Return hostname if available."""
+        # 호스트네임 정보가 있다면 여기서 반환 (현재 API는 MAC을 이름으로 씀)
+        return self._attr_name
+
+    @property
+    def extra_state_attributes(self):
+        """Return optional attributes."""
+        if self.coordinator.data and (info := self.coordinator.data.get(self._mac)):
+            return {
+                "band": info.get("band"),
+                "rssi": info.get("rssi"),
+            }
+        return {}
