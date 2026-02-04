@@ -533,7 +533,9 @@ class IPTimeSensor:
         self.not_home_count = 0
         self.not_home_threshold = 5
         self._state_attributes = {}
-
+        self.home_count = 0
+        self.home_threshold = 2  # 2번 연속으로 감지돼야 진짜 왔다고 인정
+        
     @property
     def name(self):
         if self._entity_id:
@@ -573,30 +575,40 @@ class IPTimeSensor:
         # 3. 정상 응답 (빈 딕셔너리 {} 포함) -> 로직 수행
         self.error_count = 0
         
+# [수정할 핵심 로직 부분]
         if self._target_mac in result_dict:
-            # 목록에 있음 -> Home (단, RSSI 기반 로직이 있다면 따름)
-            device_info = result_dict[self._target_mac]
-            self.not_home_count = 0
-            self._state = device_info.get("state", "home")
+            # 목록에 있음 -> 바로 재실 처리하지 않고 카운트 체크
+            self.not_home_count = 0 # 외출 카운트는 리셋
             
-            data.update({
-                "stay_time": device_info.get("stay_time", "N/A"),
-                "band": device_info.get("band", "N/A"),
-                "ip": device_info.get("ip", "N/A"),
-                "rssi": device_info.get("rssi", "N/A"),
-            })
+            if self.home_count < self.home_threshold:
+                self.home_count += 1
+            
+            # 설정한 횟수만큼 연속으로 감지되었을 때만 상태 변경
+            if self.home_count >= self.home_threshold:
+                device_info = result_dict[self._target_mac]
+                self._state = device_info.get("state", "home")
+                
+                # 속성 업데이트
+                data.update({
+                    "stay_time": device_info.get("stay_time", "N/A"),
+                    "band": device_info.get("band", "N/A"),
+                    "ip": device_info.get("ip", "N/A"),
+                    "rssi": device_info.get("rssi", "N/A"),
+                })
+            # 아직 카운트가 부족하면 이전 상태 유지 (아무것도 안 함)
+            
         else:
-            # 목록에 없음 (빈 목록 포함) -> Not Home
+            # 목록에 없음
+            self.home_count = 0 # 재실 카운트 리셋
+            
             if self.not_home_count < self.not_home_threshold:
                 self.not_home_count += 1
             else:
                 self._state = "not_home"
             
+            # (속성 N/A 처리 부분은 그대로 유지)
             data.update({
-                "stay_time": "N/A",
-                "band": "N/A",
-                "ip": "N/A",
-                "rssi": "N/A",
+                "stay_time": "N/A", "band": "N/A", "ip": "N/A", "rssi": "N/A"
             })
 
         self._state_attributes = data
