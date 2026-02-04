@@ -531,7 +531,7 @@ class IPTimeSensor:
         self.error_count = 0
         self.error_threshold = 3
         self.not_home_count = 0
-        self.not_home_threshold = 1
+        self.not_home_threshold = 5
         self._state_attributes = {}
 
     @property
