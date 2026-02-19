@@ -44,6 +44,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.0.5  | 2026.02.19  | Fix: Fixed 500 Error when opening Options Flow (Configure button).                    |
 | v2.0.6  | 2026.02.19  | Fix: Resolved potential crash with offline devices in selective tracking.             |
 | v2.0.7  | 2026.02.19  | Fix: Enhanced robust error handling for Options Flow to prevent crashes.              |
+| v2.0.8  | 2026.02.19  | Fix: Fixed type validation error (500) for options having string values instead of int.|
 
 <br>
 

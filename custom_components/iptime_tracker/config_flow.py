@@ -125,19 +125,19 @@ class IPTimeOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional(
                     "scan_interval",
                     default=options.get("scan_interval", DEFAULT_INTERVAL),
-                ): int,
+                ): vol.All(vol.Coerce(int), vol.Range(min=1)),
                 vol.Optional(
                     CONF_RSS_LIMIT,
                     default=options.get(CONF_RSS_LIMIT, RSS_LIMIT),
-                ): int,
+                ): vol.Coerce(int),
                 vol.Optional(
                     CONF_HOME_THRESHOLD,
                     default=options.get(CONF_HOME_THRESHOLD, 2),
-                ): int,
+                ): vol.Coerce(int),
                 vol.Optional(
                     CONF_NOT_HOME_THRESHOLD,
                     default=options.get(CONF_NOT_HOME_THRESHOLD, 5),
-                ): int,
+                ): vol.Coerce(int),
             }
 
             # Add multi-select if devices are available or we have tracked devices
