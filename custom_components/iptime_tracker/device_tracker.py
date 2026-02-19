@@ -155,25 +155,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     tracked_macs = entry.options.get(CONF_TRACKED_MACS)
 
     if coordinator.data:
-        # coordinator.data is a dict where keys are MAC addresses (maybe with dashes)
-        # But wait, api.py returns result_dict.
-        # device_tracker.py IPTimeSensor logic expects result_dict[mac]
-        
+        # Create entities
         for mac, device_info in coordinator.data.items():
-            if mac == "session": continue # skip the session key if present
+            if mac == "session": continue 
             
-            # Filter if tracked_macs is set (not None)
-            # If None, it means "Track All" (default)
-            # If empty list [], it means "Track None"
+            # Filter if tracked_macs is set
             if tracked_macs is not None and mac not in tracked_macs:
                 continue
 
-            # The mac in the dict might be with dashes or colons depending on api implementation.
-            # api.py replaces : with - in keys.
-            
             entities.append(IPTimeTracker(coordinator, mac, device_info, rss_limit, home_threshold, not_home_threshold))
             
     async_add_entities(entities)
+
+    # Cleanup orphaned entities
+    if tracked_macs is not None:
+        entity_registry = await hass.helpers.entity_registry.async_get_registry(hass)
+        entries = hass.helpers.entity_registry.async_entries_for_config_entry(entity_registry, entry.entry_id)
+        
+        for entity_entry in entries:
+            # Check if this entity's unique_id corresponds to a MAC we are no longer tracking
+            # unique_id format: iptime_{mac}
+            # We can extract mac or just check connection
+            
+            # The entity unique_id is set in IPTimeTracker as f"iptime_{mac}"
+            # But the MAC in unique_id replace - with : ? No, wait.
+            # In IPTimeTracker.__init__: self._attr_unique_id = f"iptime_{mac}"
+            # And mac in coordinator keys usually has dashes (from api.py).
+            
+            # Let's check how we construct unique_id
+            # api.py returns keys with dashes.
+            # So unique_id is iptime_AA-BB-CC-DD-EE-FF
+            
+            mac_from_id = entity_entry.unique_id.replace("iptime_", "")
+            
+            # If mac_from_id is NOT in tracked_macs, remove it.
+            if mac_from_id not in tracked_macs:
+                _LOGGER.info(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
+                entity_registry.async_remove(entity_entry.entity_id)
+
 
 
 class IPTimeTracker(CoordinatorEntity, ScannerEntity):

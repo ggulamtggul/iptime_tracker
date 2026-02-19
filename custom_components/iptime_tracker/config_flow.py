@@ -66,6 +66,10 @@ class IPTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
+                # Store credentials for the next step
+                self.login_info = user_input
+                self.title = info["title"]
+                return await self.async_step_pick_devices()
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -73,11 +77,50 @@ class IPTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
-            else:
-                return self.async_create_entry(title=info["title"], data=user_input)
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+
+    async def async_step_pick_devices(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the device selection step."""
+        if user_input is not None:
+             # Create entry with credentials and selected options
+            return self.async_create_entry(
+                title=self.title,
+                data=self.login_info,
+                options={CONF_TRACKED_MACS: user_input.get(CONF_TRACKED_MACS, [])}
+            )
+
+        # Fetch devices using the credentials
+        api = IPTimeAPI(self.hass, self.login_info[CONF_URL], self.login_info[CONF_ID], self.login_info[CONF_PASSWORD])
+        
+        devices = {}
+        try:
+            # We need to perform an update to get the list
+            # We reuse the logic from verify/login but we need the actual data now
+            # Rely on async_update which handles login/mesh/etc
+            result = await api.async_update()
+            
+            if result and "session" in result and result["session"] is not False:
+                # result is the dict of devices
+                for mac, info in result.items():
+                    if mac == "session": continue
+                    name = info.get("name") or info.get("nickname") or mac
+                    devices[mac] = f"{name} ({mac})"
+        except Exception:
+            _LOGGER.warning("Could not fetch devices for selection step", exc_info=True)
+            # If fail, just show empty list or skip? 
+            # Better to show empty list so they can at least finish setup.
+            pass
+
+        return self.async_show_form(
+            step_id="pick_devices",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_TRACKED_MACS, default=[]): cv.multi_select(devices)
+            }),
         )
 
     @staticmethod

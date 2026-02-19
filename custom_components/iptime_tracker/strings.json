@@ -3,9 +3,16 @@
         "step": {
             "user": {
                 "data": {
-                    "iptime_url": "ipTIME Router URL (e.g., 192.168.0.1)",
-                    "iptime_id": "Admin ID",
-                    "iptime_pw": "Admin Password"
+                    "url": "Gateway URL (e.g., 192.168.0.1)",
+                    "id": "Login ID",
+                    "password": "Login Password"
+                }
+            },
+            "pick_devices": {
+                "title": "Select Devices to Track",
+                "description": "Select the devices you want to track in Home Assistant. Unselected devices will be ignored.",
+                "data": {
+                    "tracked_macs": "Devices"
                 }
             }
         },
