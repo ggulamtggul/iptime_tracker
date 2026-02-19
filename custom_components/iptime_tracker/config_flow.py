@@ -143,29 +143,27 @@ class IPTimeOptionsFlowHandler(config_entries.OptionsFlow):
             ): int,
         }
 
-        # Add multi-select if devices are available
-        if devices:
-            # Default to all currently tracked or all if none selected yet (behavior choice)
-            # Standard behavior: if empty, maybe track all? 
-            # But here we want selective.
-            # If nothing is selected in options, we track ALL (default behavior).
-            # If user explicitly unchecks everything, it sends empty list -> Track nothing?
-            # Let's default to current selection.
-            
+        # Add multi-select if devices are available or if we have tracked devices
+        try:
             current_tracked = self.config_entry.options.get(CONF_TRACKED_MACS)
             if current_tracked is None:
-                # If never configured, default to ALL devices to avoid breaking existing setup logic visually?
-                # Actually, `cv.multi_select` UI usually shows unchecked. 
-                # If we want to capture "User wants to filter", we should probably pre-fill with all devices 
-                # if it's the first time, OR leave empty and handle "Empty = All" in logic.
-                # "Empty = All" is safer for UX.
-                default_selection = [] 
+                default_selection = []
             else:
                 default_selection = current_tracked
 
-            options_schema[
-                vol.Optional(CONF_TRACKED_MACS, default=default_selection)
-            ] = cv.multi_select(devices)
+            # Critical: Ensure all default selections are in the devices list
+            # otherwise vol.Schema validation might fail or UI might crash
+            for mac in default_selection:
+                if mac not in devices:
+                    devices[mac] = f"{mac} (Offline/Unknown)"
+
+            if devices:
+                options_schema[
+                    vol.Optional(CONF_TRACKED_MACS, default=default_selection)
+                ] = cv.multi_select(devices)
+        except Exception:
+            _LOGGER.exception("Failed to build tracked devices options")
+            # Fallback: Do not show the multi-select but allow other options
 
         return self.async_show_form(
             step_id="init",
