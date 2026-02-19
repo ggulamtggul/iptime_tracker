@@ -29,7 +29,6 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
 from .api import IPTimeAPI
-from .api import IPTimeAPI
 from .const import (
     DOMAIN,
     CONF_URL,
