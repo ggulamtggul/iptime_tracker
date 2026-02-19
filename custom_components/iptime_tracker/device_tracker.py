@@ -18,7 +18,7 @@ from homeassistant.const import (
     CONF_MAC,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_registry as er
+from homeassistant.helpers import config_validation as cv, entity_registry as er, device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
@@ -136,6 +136,7 @@ async def async_setup_scanner(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up device tracker from a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
+    device_registry = dr.async_get(hass)
     
     # We need to track all connected devices from the coordinator result
     # The coordinator result is a dict of mac -> info
@@ -153,6 +154,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     home_threshold = entry.options.get(CONF_HOME_THRESHOLD, 2)
     not_home_threshold = entry.options.get(CONF_NOT_HOME_THRESHOLD, 5)
     tracked_macs = entry.options.get(CONF_TRACKED_MACS)
+
+    # Create the Hub Device (Router)
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, entry.entry_id)},
+        manufacturer="ipTIME",
+        name=entry.title,
+        model="ipTIME Router",
+        configuration_url=entry.data.get(CONF_URL)
+    )
 
     if coordinator.data:
         # Create entities

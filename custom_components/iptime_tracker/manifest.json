@@ -11,6 +11,6 @@
   ],
   "dependencies": [],
   "iot_class": "local_polling",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "config_flow": true
 }

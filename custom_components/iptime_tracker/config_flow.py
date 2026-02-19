@@ -144,9 +144,9 @@ class IPTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class IPTimeOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options."""
 
-    # def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-    #     """Initialize options flow."""
-    #     self.config_entry = config_entry
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -157,12 +157,12 @@ class IPTimeOptionsFlowHandler(config_entries.OptionsFlow):
 
         try:
             # Safely get options
-            options = self.config_entry.options
+            options = self.entry.options
             
             # Get current devices from coordinator safely
             devices = {}
             try:
-                coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+                coordinator = self.hass.data[DOMAIN][self.entry.entry_id]
                 if coordinator.data:
                     for mac, info in coordinator.data.items():
                         if mac == "session":
