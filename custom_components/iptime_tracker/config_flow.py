@@ -104,15 +104,19 @@ class IPTimeOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         # Get current devices from coordinator
-        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
         devices = {}
-        if coordinator.data:
-            for mac, info in coordinator.data.items():
-                if mac == "session":
-                    continue
-                # Use nickname/name if available, else MAC
-                name = info.get("name") or info.get("nickname") or mac
-                devices[mac] = f"{name} ({mac})"
+        try:
+            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+            if coordinator.data:
+                for mac, info in coordinator.data.items():
+                    if mac == "session":
+                        continue
+                    # Use nickname/name if available, else MAC
+                    name = info.get("name") or info.get("nickname") or mac
+                    devices[mac] = f"{name} ({mac})"
+        except (KeyError, AttributeError):
+            # Coordinator might not be available if setup failed or not loaded
+            pass
 
         options_schema = {
             vol.Optional(

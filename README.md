@@ -41,6 +41,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.0.0  | 2026.02.19  | **Major Update**: Added UI Config Flow, Options Flow, and entity refactoring.        |
 | v2.0.3  | 2026.02.19  | Feature: Entities now use Router-assigned Device Name/Nickname.                      |
 | v2.0.4  | 2026.02.19  | Feature: Added **Selective Device Tracking**. User can choose which devices to track. |
+| v2.0.5  | 2026.02.19  | Fix: Fixed 500 Error when opening Options Flow (Configure button).                    |
 
 <br>
 
