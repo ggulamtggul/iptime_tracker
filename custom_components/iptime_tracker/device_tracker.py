@@ -165,11 +165,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         configuration_url=entry.data.get(CONF_URL)
     )
 
-    # Debug logging - Force error level to ensure visibility for user debugging
-    _LOGGER.error(f"Setup Entry: Tracked MACs: {tracked_macs}")
+    # Debug logging
+    _LOGGER.debug(f"Setup Entry: Tracked MACs: {tracked_macs}")
     
     if coordinator.data:
-        _LOGGER.error(f"Coordinator Data Keys: {list(coordinator.data.keys())}")
+        _LOGGER.debug(f"Coordinator Data Keys: {list(coordinator.data.keys())}")
         
     if coordinator.data:
         # Create entities
@@ -184,12 +184,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 tracked_macs_norm = [m.replace("-", "").replace(":", "").upper() for m in tracked_macs]
                 
                 if curr_mac_norm not in tracked_macs_norm:
-                    _LOGGER.error(f"Skipping {mac} (Norm: {curr_mac_norm}) because it is not in tracked list")
+                    _LOGGER.debug(f"Skipping {mac} (Norm: {curr_mac_norm}) because it is not in tracked list")
                     continue
 
             entities.append(IPTimeTracker(coordinator, mac, device_info, rss_limit, home_threshold, not_home_threshold))
     
-    _LOGGER.error(f"Adding {len(entities)} entities.")
+    _LOGGER.debug(f"Adding {len(entities)} entities.")
     async_add_entities(entities)
 
     # Cleanup orphaned entities
@@ -208,7 +208,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             
             # If normalized mac is NOT in tracked list, remove it.
             if mac_from_id_norm not in tracked_macs_norm:
-                _LOGGER.info(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
+                _LOGGER.debug(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
                 entity_registry.async_remove(entity_entry.entity_id)
 
 

@@ -52,6 +52,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.1.4  | 2026.02.19  | Fix: Resolved `TypeError` in Options Flow and `via_device` warning by creating Hub Device.|
 | v2.1.5  | 2026.02.19  | Debug: Added detailed debug logging to investigate missing entities issue.            |
 | v2.1.6  | 2026.02.19  | Fix: Resolved entity filtering issue due to MAC address format mismatch (`-` vs `:`). |
+| v2.1.7  | 2026.02.19  | Cleanup: Reverted debug logs to normal level (removed verification errors).           |
 
 <br>
 
