@@ -18,7 +18,7 @@ from homeassistant.const import (
     CONF_MAC,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
@@ -169,8 +169,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # Cleanup orphaned entities
     if tracked_macs is not None:
-        entity_registry = await hass.helpers.entity_registry.async_get_registry(hass)
-        entries = hass.helpers.entity_registry.async_entries_for_config_entry(entity_registry, entry.entry_id)
+        entity_registry = er.async_get(hass)
+        entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
         
         for entity_entry in entries:
             # Check if this entity's unique_id corresponds to a MAC we are no longer tracking
