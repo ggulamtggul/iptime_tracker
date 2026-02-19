@@ -103,72 +103,70 @@ class IPTimeOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        # Get current devices from coordinator
-        devices = {}
         try:
-            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-            if coordinator.data:
-                for mac, info in coordinator.data.items():
-                    if mac == "session":
-                        continue
-                    # Use nickname/name if available, else MAC
-                    name = info.get("name") or info.get("nickname") or mac
-                    devices[mac] = f"{name} ({mac})"
-        except (KeyError, AttributeError):
-            # Coordinator might not be available if setup failed or not loaded
-            pass
+            # Safely get options
+            options = self.config_entry.options
+            
+            # Get current devices from coordinator safely
+            devices = {}
+            try:
+                coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+                if coordinator.data:
+                    for mac, info in coordinator.data.items():
+                        if mac == "session":
+                            continue
+                        name = info.get("name") or info.get("nickname") or mac
+                        devices[mac] = f"{name} ({mac})"
+            except Exception:
+                pass
 
-        options_schema = {
-            vol.Optional(
-                "scan_interval",
-                default=self.config_entry.options.get(
-                    "scan_interval", DEFAULT_INTERVAL
-                ),
-            ): int,
-            vol.Optional(
-                CONF_RSS_LIMIT,
-                default=self.config_entry.options.get(
-                    CONF_RSS_LIMIT, RSS_LIMIT
-                ),
-            ): int,
-            vol.Optional(
-                CONF_HOME_THRESHOLD,
-                default=self.config_entry.options.get(CONF_HOME_THRESHOLD, 2),
-            ): int,
-            vol.Optional(
-                CONF_NOT_HOME_THRESHOLD,
-                default=self.config_entry.options.get(
-                    CONF_NOT_HOME_THRESHOLD, 5
-                ),
-            ): int,
-        }
+            # Build schema with Coerce for safety
+            options_schema = {
+                vol.Optional(
+                    "scan_interval",
+                    default=options.get("scan_interval", DEFAULT_INTERVAL),
+                ): int,
+                vol.Optional(
+                    CONF_RSS_LIMIT,
+                    default=options.get(CONF_RSS_LIMIT, RSS_LIMIT),
+                ): int,
+                vol.Optional(
+                    CONF_HOME_THRESHOLD,
+                    default=options.get(CONF_HOME_THRESHOLD, 2),
+                ): int,
+                vol.Optional(
+                    CONF_NOT_HOME_THRESHOLD,
+                    default=options.get(CONF_NOT_HOME_THRESHOLD, 5),
+                ): int,
+            }
 
-        # Add multi-select if devices are available or if we have tracked devices
-        try:
-            current_tracked = self.config_entry.options.get(CONF_TRACKED_MACS)
-            if current_tracked is None:
-                default_selection = []
-            else:
-                default_selection = current_tracked
-
-            # Critical: Ensure all default selections are in the devices list
-            # otherwise vol.Schema validation might fail or UI might crash
-            for mac in default_selection:
-                if mac not in devices:
-                    devices[mac] = f"{mac} (Offline/Unknown)"
+            # Add multi-select if devices are available or we have tracked devices
+            current_tracked = options.get(CONF_TRACKED_MACS)
+            if current_tracked:
+                # Critical: Ensure all default selections are in the devices list
+                for mac in current_tracked:
+                    if mac not in devices:
+                        devices[mac] = f"{mac} (Offline/Unknown)"
 
             if devices:
+                # Default to current_tracked or empty list
+                default_selection = current_tracked if current_tracked else []
                 options_schema[
                     vol.Optional(CONF_TRACKED_MACS, default=default_selection)
                 ] = cv.multi_select(devices)
-        except Exception:
-            _LOGGER.exception("Failed to build tracked devices options")
-            # Fallback: Do not show the multi-select but allow other options
 
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(options_schema),
-        )
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema(options_schema),
+            )
+        
+        except Exception:
+            _LOGGER.exception("Unexpected error in options flow")
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema({}),
+                errors={"base": "unknown"},
+            )
 
 
 class CannotConnect(HomeAssistantError):
