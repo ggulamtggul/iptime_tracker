@@ -1,0 +1,33 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "iptime_url": "ipTIME Router URL (e.g., 192.168.0.1)",
+                    "iptime_id": "Admin ID",
+                    "iptime_pw": "Admin Password"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "abort": {
+            "already_configured": "Device is already configured"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "scan_interval": "Update Interval (seconds)",
+                    "rss_limit": "RSS Limit (dBm, e.g. -81)",
+                    "home_threshold": "Home Threshold (checks)",
+                    "not_home_threshold": "Not Home Threshold (checks)"
+                }
+            }
+        }
+    }
+}

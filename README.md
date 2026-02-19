@@ -11,9 +11,11 @@ ipTIME Tracker for Home Assistnat #HA
 - 관리페이지 접속을 위해 문자열 입력(Captcha) 사용을 해제해야합니다.
   - "세션방식 / 수동입력 / 3회 이상 로그인 실패 시 사용"으로 설정하시면 Tracker와 보안을 동시에 챙길 수 있습니다.
 <br> => 메뉴 -> 고급 설정 -> 시스템 관리 -> 관리자 설정 -> 로그인 인증 방법 설정
+<br> => 메뉴 -> 고급 설정 -> 시스템 관리 -> 관리자 설정 -> 로그인 인증 방법 설정
 <br><img src="image/iptime_tracker_02.png" width=70% height=70%/>
 - Home Assistant 출력
 <br><img src="image/iptime_tracker_01.png" width=30% height=30%/>
+- **New in v2.0.0**: 이제 YAML 설정 없이 홈어시스턴트 UI에서 바로 추가 및 설정이 가능합니다!
 
 
 <br>
@@ -36,6 +38,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v1.6.1  | 2024.05.27  | Removed output functions for debugging.                                              |
 | v1.6.2  | 2025.09.14  | Fixed compatibility with beta UI changes.                                            |
 | v1.7.0  | 2026.02.19  | Added configurable RSSI limit and thresholds for better iPhone detection.            |
+| v2.0.0  | 2026.02.19  | **Major Update**: Added UI Config Flow, Options Flow, and entity refactoring.        |
 
 <br>
 
@@ -51,8 +54,16 @@ ipTIME Tracker for Home Assistnat #HA
 
 <br>
 
-## Example configuration (YAML)
-### configuration.yaml
+## Configuration
+
+### UI (Recommended)
+1. **설정** > **기기 및 서비스** > **통합 구성요소 추가** 버튼 클릭
+2. **"ipTIME Tracker"** 검색 및 선택
+3. 공유기 주소, 아이디, 비밀번호 입력 후 확인
+4. 추가된 통합 구성요소의 **"구성"** 버튼을 눌러 스캔 간격, RSSI 제한 등을 자유롭게 변경 가능
+
+### YAML (Legacy)
+- 기존 사용자를 위한 수동 설정 방식입니다. UI 설정을 권장합니다.
 - HA 환경설정파일에 아래와 같은 형식으로 입력해주세요.
 
 ```yaml
@@ -123,7 +134,7 @@ Configure the sensors that will scrape the data.
 ---
 
 [hacs-shield]: https://img.shields.io/badge/HACS-Custom-41BDF5
-[version-shield]: https://img.shields.io/badge/version-v1.6.2-blue
+[version-shield]: https://img.shields.io/badge/version-v2.0.0-blue
 [buymecoffee-shield]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg
 [buymecoffee]: https://www.buymeacoffee.com/junskr
 [github-repository]: https://github.com/junskr/iptime_tracker
