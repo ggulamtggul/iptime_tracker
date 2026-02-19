@@ -210,6 +210,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             if mac_from_id_norm not in tracked_macs_norm:
                 _LOGGER.debug(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
                 entity_registry.async_remove(entity_entry.entity_id)
+                
+                # Also remove the device if it's no longer tracked
+                if entity_entry.device_id:
+                    device = device_registry.async_get(entity_entry.device_id)
+                    # Safety check: identifiers should match domain and mac
+                    if device:
+                        for identifier in device.identifiers:
+                            if identifier[0] == DOMAIN and identifier[1] == mac_from_id:
+                                _LOGGER.debug(f"Removing orphaned device: {entity_entry.device_id} ({mac_from_id})")
+                                device_registry.async_remove_device(entity_entry.device_id)
+                                break
 
 
 
