@@ -50,6 +50,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.1.2  | 2026.02.19  | Fix: Resolved `AttributeError: helpers` during entity cleanup on startup.             |
 | v2.1.3  | 2026.02.19  | Fix: Resolved `AttributeError: config_entry` in Options Flow (compatibility fix).     |
 | v2.1.4  | 2026.02.19  | Fix: Resolved `TypeError` in Options Flow and `via_device` warning by creating Hub Device.|
+| v2.1.5  | 2026.02.19  | Debug: Added detailed debug logging to investigate missing entities issue.            |
 
 <br>
 

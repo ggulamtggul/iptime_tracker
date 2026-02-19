@@ -165,17 +165,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         configuration_url=entry.data.get(CONF_URL)
     )
 
+    # Debug logging
+    _LOGGER.debug(f"Setup Entry: Tracked MACs: {tracked_macs}")
+    if coordinator.data:
+        _LOGGER.debug(f"Coordinator Data Keys: {list(coordinator.data.keys())}")
+        
     if coordinator.data:
         # Create entities
         for mac, device_info in coordinator.data.items():
             if mac == "session": continue 
             
             # Filter if tracked_macs is set
-            if tracked_macs is not None and mac not in tracked_macs:
-                continue
+            if tracked_macs is not None:
+                # Normalize MACs for comparison (just in case)
+                # api.py returns dashes.
+                # tracked_macs might be dashes or colons depending on where it came from.
+                # let's assume dashes based on config flow.
+                
+                if mac not in tracked_macs:
+                    _LOGGER.debug(f"Skipping {mac} because it is not in tracked_macs")
+                    continue
 
             entities.append(IPTimeTracker(coordinator, mac, device_info, rss_limit, home_threshold, not_home_threshold))
-            
+    
+    _LOGGER.debug(f"Adding {len(entities)} entities.")
     async_add_entities(entities)
 
     # Cleanup orphaned entities
