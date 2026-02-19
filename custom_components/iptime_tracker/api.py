@@ -332,6 +332,7 @@ class IPTimeAPI:
             
             result_dict[device["mac"].replace(":", "-")] = {
                 "ip": device["info"]["ip"],
+                "name": device["info"].get("name") or device["info"].get("nickname") or device["mac"],
                 "band": band,
                 "stay_time": f"{days}일 {h}시간 {m}분 {s}초",
                 "rssi": rss,
@@ -388,6 +389,7 @@ class IPTimeAPI:
 
             result_dict[device["mac"].replace(":", "-")] = {
                 "ip": device.get("ip", "N/A"),
+                "name": device.get("nickname") or device.get("name") or device["mac"],
                 "band": band,
                 "stay_time": f"{days}일 {h}시간 {m}분 {s}초",
                 "rssi": rss,
@@ -424,6 +426,7 @@ class IPTimeAPI:
                 connected_time = f"{device.get('day',0)}일 {device.get('hour',0)}시간 {device.get('min',0)}분 {device.get('sec',0)}초"
                 result_dict[device["mac"]] = {
                     "ip": device.get("ipaddr", False),
+                    "name": device.get("nickname") or device["mac"],
                     "band": band,
                     "stay_time": connected_time,
                     "state": "home",

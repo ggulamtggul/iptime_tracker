@@ -186,7 +186,7 @@ class IPTimeTracker(CoordinatorEntity, ScannerEntity):
         
         # Unique ID is essential for UI
         self._attr_unique_id = f"iptime_{mac}"
-        self._attr_name = f"Device {mac}"
+        self._attr_name = device_info.get("name") or f"Device {mac}"
         
         # Attempt to get hostname from somewhere if available? 
         # API doesn't seem to return hostname easily in all methods, strictly IP/MAC/RSSI.
