@@ -12,7 +12,11 @@
                 "title": "Select Devices to Track",
                 "description": "Select the devices you want to track in Home Assistant. Unselected devices will be ignored.",
                 "data": {
-                    "tracked_macs": "Devices"
+                    "tracked_macs": "Devices to Track",
+                    "scan_interval": "Update Interval (seconds)",
+                    "rss_limit": "RSS Limit (dBm, e.g. -81)",
+                    "home_threshold": "Home Threshold (checks)",
+                    "not_home_threshold": "Not Home Threshold (checks)"
                 }
             }
         },

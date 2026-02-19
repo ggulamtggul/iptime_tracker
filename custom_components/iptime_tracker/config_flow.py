@@ -88,10 +88,17 @@ class IPTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the device selection step."""
         if user_input is not None:
              # Create entry with credentials and selected options
+            options = {
+                CONF_TRACKED_MACS: user_input.get(CONF_TRACKED_MACS, []),
+                "scan_interval": user_input.get("scan_interval", DEFAULT_INTERVAL),
+                CONF_RSS_LIMIT: user_input.get(CONF_RSS_LIMIT, RSS_LIMIT),
+                CONF_HOME_THRESHOLD: user_input.get(CONF_HOME_THRESHOLD, 2),
+                CONF_NOT_HOME_THRESHOLD: user_input.get(CONF_NOT_HOME_THRESHOLD, 5),
+            }
             return self.async_create_entry(
                 title=self.title,
                 data=self.login_info,
-                options={CONF_TRACKED_MACS: user_input.get(CONF_TRACKED_MACS, [])}
+                options=options
             )
 
         # Fetch devices using the credentials
@@ -112,14 +119,16 @@ class IPTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     devices[mac] = f"{name} ({mac})"
         except Exception:
             _LOGGER.warning("Could not fetch devices for selection step", exc_info=True)
-            # If fail, just show empty list or skip? 
-            # Better to show empty list so they can at least finish setup.
             pass
 
         return self.async_show_form(
             step_id="pick_devices",
             data_schema=vol.Schema({
-                vol.Optional(CONF_TRACKED_MACS, default=[]): cv.multi_select(devices)
+                vol.Optional(CONF_TRACKED_MACS, default=[]): cv.multi_select(devices),
+                vol.Optional("scan_interval", default=DEFAULT_INTERVAL): int,
+                vol.Optional(CONF_RSS_LIMIT, default=RSS_LIMIT): int,
+                vol.Optional(CONF_HOME_THRESHOLD, default=2): int,
+                vol.Optional(CONF_NOT_HOME_THRESHOLD, default=5): int,
             }),
         )
 

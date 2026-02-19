@@ -46,6 +46,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.0.7  | 2026.02.19  | Fix: Enhanced robust error handling for Options Flow to prevent crashes.              |
 | v2.0.8  | 2026.02.19  | Fix: Fixed type validation error (500) for options having string values instead of int.|
 | v2.1.0  | 2026.02.19  | **Major Update:** Added **Device Selection Step** during initial setup. Improved entity cleanup. |
+| v2.1.1  | 2026.02.19  | Feature: Added `scan_interval`, `rss_limit`, etc. to the **Initial Setup** flow.     |
 
 <br>
 
