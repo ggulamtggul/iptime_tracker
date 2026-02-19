@@ -35,6 +35,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v1.6.0  | 2024.05.27  | Update to support mesh networks for Beta UI.                                         |
 | v1.6.1  | 2024.05.27  | Removed output functions for debugging.                                              |
 | v1.6.2  | 2025.09.14  | Fixed compatibility with beta UI changes.                                            |
+| v1.7.0  | 2026.02.19  | Added configurable RSSI limit and thresholds for better iPhone detection.            |
 
 <br>
 
@@ -65,7 +66,10 @@ device_tracker:
       - name: 'Galaxy'
         mac: 'AA-BB-CC-DD-EE-FF'
       - name: 'Iphone'
-        mac: 'BB-CC-DD-EE-FF-AA'        
+        mac: 'BB-CC-DD-EE-FF-AA'
+    rss_limit: -95          # Optional: RSSI limit (default: -81)
+    home_threshold: 1       # Optional: Count to mark as home (default: 2)
+    not_home_threshold: 10  # Optional: Count to mark as not_home (default: 5)        
 ```
 
 ### known_devices.yaml
@@ -94,6 +98,9 @@ Configure the sensors that will scrape the data.
 | targets           | 트래킹 대상 리스트      | True     |         | string - list |
 | targets > name    | 트래킹 대상의 표시 이름 | True     |         | string        |
 | targets > mac     | 트래킹 대상의 MAC 주소  | True     |         | string        |
+| rss_limit         | RSSI 제한 (dBm)         | False    |   -81   | int           |
+| home_threshold    | 재실 인식 최소 횟수     | False    |    2    | int           |
+| not_home_threshold| 부재 인식 최소 횟수     | False    |    5    | int           |
 
 <br>
 
