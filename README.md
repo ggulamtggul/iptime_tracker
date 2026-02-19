@@ -54,6 +54,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.1.6  | 2026.02.19  | Fix: Resolved entity filtering issue due to MAC address format mismatch (`-` vs `:`). |
 | v2.1.7  | 2026.02.19  | Cleanup: Reverted debug logs to normal level (removed verification errors).           |
 | v2.1.8  | 2026.02.19  | Feature: Force removal of 'Device' entry when untracked (usually only Entity is removed).|
+| v2.1.9  | 2026.02.19  | Fix: Resolved logic crash in device cleanup. Added try-except to prevent setup failure. |
 
 <br>
 

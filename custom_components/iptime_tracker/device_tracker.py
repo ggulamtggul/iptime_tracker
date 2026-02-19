@@ -193,34 +193,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
     # Cleanup orphaned entities
-    if tracked_macs is not None:
-        entity_registry = er.async_get(hass)
-        entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
-        
-        # Prepare normalized tracked list once
-        tracked_macs_norm = [m.replace("-", "").replace(":", "").upper() for m in tracked_macs]
-
-        for entity_entry in entries:
-            # unique_id format: iptime_{mac}
-            # Remove prefix
-            mac_from_id = entity_entry.unique_id.replace("iptime_", "")
-            mac_from_id_norm = mac_from_id.replace("-", "").replace(":", "").upper()
+    try:
+        if tracked_macs is not None:
+            entity_registry = er.async_get(hass)
+            entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
             
-            # If normalized mac is NOT in tracked list, remove it.
-            if mac_from_id_norm not in tracked_macs_norm:
-                _LOGGER.debug(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
-                entity_registry.async_remove(entity_entry.entity_id)
+            # Prepare normalized tracked list once
+            tracked_macs_norm = [m.replace("-", "").replace(":", "").upper() for m in tracked_macs]
+
+            for entity_entry in entries:
+                # unique_id format: iptime_{mac}
+                # Remove prefix
+                mac_from_id = entity_entry.unique_id.replace("iptime_", "")
+                mac_from_id_norm = mac_from_id.replace("-", "").replace(":", "").upper()
                 
-                # Also remove the device if it's no longer tracked
-                if entity_entry.device_id:
-                    device = device_registry.async_get(entity_entry.device_id)
-                    # Safety check: identifiers should match domain and mac
-                    if device:
-                        for identifier in device.identifiers:
-                            if identifier[0] == DOMAIN and identifier[1] == mac_from_id:
-                                _LOGGER.debug(f"Removing orphaned device: {entity_entry.device_id} ({mac_from_id})")
-                                device_registry.async_remove_device(entity_entry.device_id)
-                                break
+                # If normalized mac is NOT in tracked list, remove it.
+                if mac_from_id_norm not in tracked_macs_norm:
+                    _LOGGER.debug(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
+                    entity_registry.async_remove(entity_entry.entity_id)
+                    
+                    # Also remove the device if it's no longer tracked
+                    if entity_entry.device_id:
+                        try:
+                            device = device_registry.async_get(entity_entry.device_id)
+                            # Safety check: identifiers should match domain and mac
+                            if device:
+                                for identifier in device.identifiers:
+                                    if len(identifier) < 2: continue
+                                    if identifier[0] == DOMAIN and identifier[1] == mac_from_id:
+                                        _LOGGER.debug(f"Removing orphaned device: {entity_entry.device_id} ({mac_from_id})")
+                                        device_registry.async_remove_device(entity_entry.device_id)
+                                        break
+                        except Exception as e:
+                            _LOGGER.error(f"Failed to remove orphaned device {entity_entry.device_id}: {e}")
+    except Exception as e:
+        _LOGGER.error(f"Error during entity cleanup: {e}")
 
 
 
