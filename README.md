@@ -63,6 +63,7 @@ ipTIME Tracker for Home Assistnat #HA
 2. **"ipTIME Tracker"** 검색 및 선택
 3. 공유기 주소, 아이디, 비밀번호 입력 후 확인
 4. 추가된 통합 구성요소의 **"구성"** 버튼을 눌러 스캔 간격, RSSI 제한 등을 자유롭게 변경 가능
+65. **New:** **"Devices to Track"** 항목에서 추적하고 싶은 기기만 선택 가능 (체크하지 않으면 모든 기기 추적)
 
 ### YAML (Legacy)
 - 기존 사용자를 위한 수동 설정 방식입니다. UI 설정을 권장합니다.
@@ -136,7 +137,7 @@ Configure the sensors that will scrape the data.
 ---
 
 [hacs-shield]: https://img.shields.io/badge/HACS-Custom-41BDF5
-[version-shield]: https://img.shields.io/badge/version-v2.0.0-blue
+[version-shield]: https://img.shields.io/badge/version-v2.0.4-blue
 [buymecoffee-shield]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg
 [buymecoffee]: https://www.buymeacoffee.com/junskr
 [github-repository]: https://github.com/junskr/iptime_tracker
