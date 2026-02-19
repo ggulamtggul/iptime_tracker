@@ -6,6 +6,7 @@ from typing import Any
 
 import voluptuous as vol
 
+import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_URL
 from homeassistant.core import HomeAssistant, callback
@@ -19,6 +20,7 @@ from .const import (
     CONF_RSS_LIMIT,
     CONF_HOME_THRESHOLD,
     CONF_NOT_HOME_THRESHOLD,
+    CONF_TRACKED_MACS,
     RSS_LIMIT,
     DEFAULT_INTERVAL,
 )
@@ -101,34 +103,69 @@ class IPTimeOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        # Get current devices from coordinator
+        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+        devices = {}
+        if coordinator.data:
+            for mac, info in coordinator.data.items():
+                if mac == "session":
+                    continue
+                # Use nickname/name if available, else MAC
+                name = info.get("name") or info.get("nickname") or mac
+                devices[mac] = f"{name} ({mac})"
+
+        options_schema = {
+            vol.Optional(
+                "scan_interval",
+                default=self.config_entry.options.get(
+                    "scan_interval", DEFAULT_INTERVAL
+                ),
+            ): int,
+            vol.Optional(
+                CONF_RSS_LIMIT,
+                default=self.config_entry.options.get(
+                    CONF_RSS_LIMIT, RSS_LIMIT
+                ),
+            ): int,
+            vol.Optional(
+                CONF_HOME_THRESHOLD,
+                default=self.config_entry.options.get(CONF_HOME_THRESHOLD, 2),
+            ): int,
+            vol.Optional(
+                CONF_NOT_HOME_THRESHOLD,
+                default=self.config_entry.options.get(
+                    CONF_NOT_HOME_THRESHOLD, 5
+                ),
+            ): int,
+        }
+
+        # Add multi-select if devices are available
+        if devices:
+            # Default to all currently tracked or all if none selected yet (behavior choice)
+            # Standard behavior: if empty, maybe track all? 
+            # But here we want selective.
+            # If nothing is selected in options, we track ALL (default behavior).
+            # If user explicitly unchecks everything, it sends empty list -> Track nothing?
+            # Let's default to current selection.
+            
+            current_tracked = self.config_entry.options.get(CONF_TRACKED_MACS)
+            if current_tracked is None:
+                # If never configured, default to ALL devices to avoid breaking existing setup logic visually?
+                # Actually, `cv.multi_select` UI usually shows unchecked. 
+                # If we want to capture "User wants to filter", we should probably pre-fill with all devices 
+                # if it's the first time, OR leave empty and handle "Empty = All" in logic.
+                # "Empty = All" is safer for UX.
+                default_selection = [] 
+            else:
+                default_selection = current_tracked
+
+            options_schema[
+                vol.Optional(CONF_TRACKED_MACS, default=default_selection)
+            ] = cv.multi_select(devices)
+
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        "scan_interval",
-                        default=self.config_entry.options.get(
-                            "scan_interval", DEFAULT_INTERVAL
-                        ),
-                    ): int,
-                    vol.Optional(
-                        CONF_RSS_LIMIT,
-                        default=self.config_entry.options.get(
-                            CONF_RSS_LIMIT, RSS_LIMIT
-                        ),
-                    ): int,
-                    vol.Optional(
-                        CONF_HOME_THRESHOLD,
-                        default=self.config_entry.options.get(CONF_HOME_THRESHOLD, 2),
-                    ): int,
-                    vol.Optional(
-                        CONF_NOT_HOME_THRESHOLD,
-                        default=self.config_entry.options.get(
-                            CONF_NOT_HOME_THRESHOLD, 5
-                        ),
-                    ): int,
-                }
-            ),
+            data_schema=vol.Schema(options_schema),
         )
 
 

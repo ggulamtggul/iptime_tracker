@@ -56,6 +56,7 @@ from .const import (
     CONF_RSS_LIMIT,
     CONF_HOME_THRESHOLD,
     CONF_NOT_HOME_THRESHOLD,
+    CONF_TRACKED_MACS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -151,6 +152,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     rss_limit = entry.options.get(CONF_RSS_LIMIT, RSS_LIMIT)
     home_threshold = entry.options.get(CONF_HOME_THRESHOLD, 2)
     not_home_threshold = entry.options.get(CONF_NOT_HOME_THRESHOLD, 5)
+    tracked_macs = entry.options.get(CONF_TRACKED_MACS)
 
     if coordinator.data:
         # coordinator.data is a dict where keys are MAC addresses (maybe with dashes)
@@ -160,6 +162,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for mac, device_info in coordinator.data.items():
             if mac == "session": continue # skip the session key if present
             
+            # Filter if tracked_macs is set (not None)
+            # If None, it means "Track All" (default)
+            # If empty list [], it means "Track None"
+            if tracked_macs is not None and mac not in tracked_macs:
+                continue
+
             # The mac in the dict might be with dashes or colons depending on api implementation.
             # api.py replaces : with - in keys.
             

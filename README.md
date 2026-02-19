@@ -40,6 +40,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v1.7.0  | 2026.02.19  | Added configurable RSSI limit and thresholds for better iPhone detection.            |
 | v2.0.0  | 2026.02.19  | **Major Update**: Added UI Config Flow, Options Flow, and entity refactoring.        |
 | v2.0.3  | 2026.02.19  | Feature: Entities now use Router-assigned Device Name/Nickname.                      |
+| v2.0.4  | 2026.02.19  | Feature: Added **Selective Device Tracking**. User can choose which devices to track. |
 
 <br>
 
