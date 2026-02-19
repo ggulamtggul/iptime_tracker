@@ -165,10 +165,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         configuration_url=entry.data.get(CONF_URL)
     )
 
-    # Debug logging
-    _LOGGER.debug(f"Setup Entry: Tracked MACs: {tracked_macs}")
+    # Debug logging - Force error level to ensure visibility for user debugging
+    _LOGGER.error(f"Setup Entry: Tracked MACs: {tracked_macs}")
+    
     if coordinator.data:
-        _LOGGER.debug(f"Coordinator Data Keys: {list(coordinator.data.keys())}")
+        _LOGGER.error(f"Coordinator Data Keys: {list(coordinator.data.keys())}")
         
     if coordinator.data:
         # Create entities
@@ -177,18 +178,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             
             # Filter if tracked_macs is set
             if tracked_macs is not None:
-                # Normalize MACs for comparison (just in case)
-                # api.py returns dashes.
-                # tracked_macs might be dashes or colons depending on where it came from.
-                # let's assume dashes based on config flow.
+                # Normalize MACs for comparison (remove - and : and uppercase)
+                # This handles mismatch between API response and stored options
+                curr_mac_norm = mac.replace("-", "").replace(":", "").upper()
+                tracked_macs_norm = [m.replace("-", "").replace(":", "").upper() for m in tracked_macs]
                 
-                if mac not in tracked_macs:
-                    _LOGGER.debug(f"Skipping {mac} because it is not in tracked_macs")
+                if curr_mac_norm not in tracked_macs_norm:
+                    _LOGGER.error(f"Skipping {mac} (Norm: {curr_mac_norm}) because it is not in tracked list")
                     continue
 
             entities.append(IPTimeTracker(coordinator, mac, device_info, rss_limit, home_threshold, not_home_threshold))
     
-    _LOGGER.debug(f"Adding {len(entities)} entities.")
+    _LOGGER.error(f"Adding {len(entities)} entities.")
     async_add_entities(entities)
 
     # Cleanup orphaned entities
@@ -196,24 +197,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         entity_registry = er.async_get(hass)
         entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
         
+        # Prepare normalized tracked list once
+        tracked_macs_norm = [m.replace("-", "").replace(":", "").upper() for m in tracked_macs]
+
         for entity_entry in entries:
-            # Check if this entity's unique_id corresponds to a MAC we are no longer tracking
             # unique_id format: iptime_{mac}
-            # We can extract mac or just check connection
-            
-            # The entity unique_id is set in IPTimeTracker as f"iptime_{mac}"
-            # But the MAC in unique_id replace - with : ? No, wait.
-            # In IPTimeTracker.__init__: self._attr_unique_id = f"iptime_{mac}"
-            # And mac in coordinator keys usually has dashes (from api.py).
-            
-            # Let's check how we construct unique_id
-            # api.py returns keys with dashes.
-            # So unique_id is iptime_AA-BB-CC-DD-EE-FF
-            
+            # Remove prefix
             mac_from_id = entity_entry.unique_id.replace("iptime_", "")
+            mac_from_id_norm = mac_from_id.replace("-", "").replace(":", "").upper()
             
-            # If mac_from_id is NOT in tracked_macs, remove it.
-            if mac_from_id not in tracked_macs:
+            # If normalized mac is NOT in tracked list, remove it.
+            if mac_from_id_norm not in tracked_macs_norm:
                 _LOGGER.info(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
                 entity_registry.async_remove(entity_entry.entity_id)
 
