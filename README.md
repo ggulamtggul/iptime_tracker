@@ -48,6 +48,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.1.0  | 2026.02.19  | **Major Update:** Added **Device Selection Step** during initial setup. Improved entity cleanup. |
 | v2.1.1  | 2026.02.19  | Feature: Added `scan_interval`, `rss_limit`, etc. to the **Initial Setup** flow.     |
 | v2.1.2  | 2026.02.19  | Fix: Resolved `AttributeError: helpers` during entity cleanup on startup.             |
+| v2.1.3  | 2026.02.19  | Fix: Resolved `AttributeError: config_entry` in Options Flow (compatibility fix).     |
 
 <br>
 
