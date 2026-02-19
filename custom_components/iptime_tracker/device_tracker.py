@@ -49,6 +49,9 @@ from .const import (
     BETA_UI_URN,
     BETA_SERVICE_URN,
     RSS_LIMIT,
+    CONF_RSS_LIMIT,
+    CONF_HOME_THRESHOLD,
+    CONF_NOT_HOME_THRESHOLD,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,6 +70,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 }
             ],
         ),
+        vol.Optional(CONF_RSS_LIMIT, default=RSS_LIMIT): vol.Coerce(int),
+        vol.Optional(CONF_HOME_THRESHOLD, default=2): vol.Coerce(int),
+        vol.Optional(CONF_NOT_HOME_THRESHOLD, default=5): vol.Coerce(int),
     }
 )
 
@@ -81,6 +87,9 @@ async def async_setup_scanner(
     scan_interval = config.get(
         CONF_SCAN_INTERVAL, timedelta(seconds=DEFAULT_INTERVAL)
     )
+    rss_limit = config.get(CONF_RSS_LIMIT)
+    home_threshold = config.get(CONF_HOME_THRESHOLD)
+    not_home_threshold = config.get(CONF_NOT_HOME_THRESHOLD)
 
     api = IPTimeAPI(hass, url, user_id, user_pw)
     
@@ -94,7 +103,7 @@ async def async_setup_scanner(
 
     await coordinator.async_refresh()
 
-    sensors = [IPTimeSensor(target[CONF_NAME], target[CONF_MAC], api) for target in targets]
+    sensors = [IPTimeSensor(target[CONF_NAME], target[CONF_MAC], api, rss_limit, home_threshold, not_home_threshold) for target in targets]
 
     async def async_update_devices():
         """코디네이터 업데이트 후 디바이스 상태를 HA에 알림"""
@@ -523,7 +532,7 @@ class IPTimeAPI:
 class IPTimeSensor:
     """Representation of a Sensor."""
 
-    def __init__(self, name, mac, api) -> None:
+    def __init__(self, name, mac, api, rss_limit, home_threshold, not_home_threshold) -> None:
         self._state = "N/A"
         self._entity_id = name
         self._target_mac = mac.replace(":", "-")
@@ -531,10 +540,11 @@ class IPTimeSensor:
         self.error_count = 0
         self.error_threshold = 3
         self.not_home_count = 0
-        self.not_home_threshold = 5
+        self.not_home_threshold = not_home_threshold
         self._state_attributes = {}
         self.home_count = 0
-        self.home_threshold = 2  # 2번 연속으로 감지돼야 진짜 왔다고 인정
+        self.home_threshold = home_threshold  # 2번 연속으로 감지돼야 진짜 왔다고 인정
+        self.rss_limit = rss_limit
         
     @property
     def name(self):
@@ -586,7 +596,15 @@ class IPTimeSensor:
             # 설정한 횟수만큼 연속으로 감지되었을 때만 상태 변경
             if self.home_count >= self.home_threshold:
                 device_info = result_dict[self._target_mac]
-                self._state = device_info.get("state", "home")
+
+                rss = device_info.get("rssi")
+                if isinstance(rss, int):
+                    if rss < self.rss_limit:
+                        self._state = "not_home"
+                    else:
+                        self._state = "home"
+                else:
+                    self._state = device_info.get("state", "home")
                 
                 # 속성 업데이트
                 data.update({

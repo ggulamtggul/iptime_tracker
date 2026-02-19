@@ -6,6 +6,9 @@ CONF_PASSWORD = 'iptime_pw'
 CONF_TARGET = 'targets'
 CONF_NAME = 'name'
 CONF_MAC = 'mac'
+CONF_RSS_LIMIT = 'rss_limit'
+CONF_HOME_THRESHOLD = 'home_threshold'
+CONF_NOT_HOME_THRESHOLD = 'not_home_threshold'
 DEFAULT_INTERVAL = 5
 RSS_LIMIT = -81
 
