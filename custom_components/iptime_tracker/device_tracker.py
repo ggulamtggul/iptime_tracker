@@ -171,23 +171,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     if coordinator.data:
         _LOGGER.debug(f"Coordinator Data Keys: {list(coordinator.data.keys())}")
         
-    if coordinator.data:
-        # Create entities
-        for mac, device_info in coordinator.data.items():
-            if mac == "session": continue 
+    if tracked_macs is not None:
+        for tracked_mac in tracked_macs:
+            mac_to_use = tracked_mac
+            device_info = {}
             
-            # Filter if tracked_macs is set
-            if tracked_macs is not None:
-                # Normalize MACs for comparison (remove - and : and uppercase)
-                # This handles mismatch between API response and stored options
-                curr_mac_norm = mac.replace("-", "").replace(":", "").upper()
-                tracked_macs_norm = [m.replace("-", "").replace(":", "").upper() for m in tracked_macs]
-                
-                if curr_mac_norm not in tracked_macs_norm:
-                    _LOGGER.debug(f"Skipping {mac} (Norm: {curr_mac_norm}) because it is not in tracked list")
-                    continue
-
-            entities.append(IPTimeTracker(coordinator, mac, device_info, rss_limit, home_threshold, not_home_threshold))
+            if coordinator.data:
+                for coord_mac, info in coordinator.data.items():
+                    if coord_mac == "session": continue
+                    if coord_mac.replace("-", "").replace(":", "").upper() == tracked_mac.replace("-", "").replace(":", "").upper():
+                        mac_to_use = coord_mac
+                        device_info = info
+                        break
+                        
+            entities.append(IPTimeTracker(coordinator, mac_to_use, device_info, rss_limit, home_threshold, not_home_threshold))
+            
+    else:
+        if coordinator.data:
+            for mac, device_info in coordinator.data.items():
+                if mac == "session": continue 
+                entities.append(IPTimeTracker(coordinator, mac, device_info, rss_limit, home_threshold, not_home_threshold))
     
     _LOGGER.debug(f"Adding {len(entities)} entities.")
     async_add_entities(entities)
@@ -245,7 +248,20 @@ class IPTimeTracker(CoordinatorEntity, ScannerEntity):
         
         self._home_count = 0
         self._not_home_count = 0
-        self._is_connected = True # Initially connected when found
+        
+        # Initialize connection state properly
+        self._is_connected = False
+        if coordinator.data and mac in coordinator.data:
+            device_data = coordinator.data[mac]
+            rss = device_data.get("rssi")
+            if isinstance(rss, int) and rss < self._rss_limit:
+                 self._is_connected = False
+            else:
+                 self._is_connected = True
+                 self._home_count = self._home_threshold # Start as fully home to avoid immediate flap
+        
+        if not self._is_connected:
+            self._not_home_count = self._not_home_threshold # Start as fully not_home
         
         # Unique ID is essential for UI
         self._attr_unique_id = f"iptime_{mac}"
