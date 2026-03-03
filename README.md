@@ -55,6 +55,7 @@ ipTIME Tracker for Home Assistnat #HA
 | v2.1.7  | 2026.02.19  | Cleanup: Reverted debug logs to normal level (removed verification errors).           |
 | v2.1.8  | 2026.02.19  | Feature: Force removal of 'Device' entry when untracked (usually only Entity is removed).|
 | v2.1.9  | 2026.02.19  | Fix: Resolved logic crash in device cleanup. Added try-except to prevent setup failure. |
+| v2.1.10 | 2026.03.04  | Fix: Resolved issue where device trackers became unavailable on HAOS restart when devices are not at home. |
 
 <br>
 
@@ -151,7 +152,7 @@ Configure the sensors that will scrape the data.
 ---
 
 [hacs-shield]: https://img.shields.io/badge/HACS-Custom-41BDF5
-[version-shield]: https://img.shields.io/badge/version-v2.0.4-blue
+[version-shield]: https://img.shields.io/badge/version-v2.1.10-blue
 [buymecoffee-shield]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg
 [buymecoffee]: https://www.buymeacoffee.com/junskr
 [github-repository]: https://github.com/junskr/iptime_tracker
