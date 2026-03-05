@@ -205,28 +205,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             tracked_macs_norm = [m.replace("-", "").replace(":", "").upper() for m in tracked_macs]
 
             for entity_entry in entries:
+                if not entity_entry.unique_id.startswith("iptime_"):
+                    continue
                 # unique_id format: iptime_{mac}
-                # Remove prefix
                 mac_from_id = entity_entry.unique_id.replace("iptime_", "")
                 mac_from_id_norm = mac_from_id.replace("-", "").replace(":", "").upper()
                 
                 # If normalized mac is NOT in tracked list, remove it.
                 if mac_from_id_norm not in tracked_macs_norm:
-                    _LOGGER.debug(f"Removing orphaned entity: {entity_entry.entity_id} ({mac_from_id})")
+                    _LOGGER.info(f"Removing orphaned entity/device: {entity_entry.entity_id} ({mac_from_id})")
                     entity_registry.async_remove(entity_entry.entity_id)
                     
                     # Also remove the device if it's no longer tracked
                     if entity_entry.device_id:
                         try:
+                            # To safely remove the device, verify it belongs to this integration
                             device = device_registry.async_get(entity_entry.device_id)
-                            # Safety check: identifiers should match domain and mac
                             if device:
+                                is_iptime = False
                                 for identifier in device.identifiers:
-                                    if len(identifier) < 2: continue
-                                    if identifier[0] == DOMAIN and identifier[1] == mac_from_id:
-                                        _LOGGER.debug(f"Removing orphaned device: {entity_entry.device_id} ({mac_from_id})")
-                                        device_registry.async_remove_device(entity_entry.device_id)
+                                    if len(identifier) >= 2 and identifier[0] == DOMAIN:
+                                        is_iptime = True
                                         break
+                                if is_iptime:
+                                    _LOGGER.info(f"Removing orphaned device id: {entity_entry.device_id}")
+                                    device_registry.async_remove_device(entity_entry.device_id)
                         except Exception as e:
                             _LOGGER.error(f"Failed to remove orphaned device {entity_entry.device_id}: {e}")
     except Exception as e:
@@ -299,6 +302,9 @@ class IPTimeTracker(CoordinatorEntity, ScannerEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+        if self.coordinator.data and self.coordinator.data.get("session") is False:
+            return  # 세션 끊김 등의 상태 조회 실패 시 기존 카운트/상태 유지
+
         is_connected_now = False
         
         if self.coordinator.data and self._mac in self.coordinator.data:
@@ -412,33 +418,36 @@ class IPTimeSensor:
         
 # [수정할 핵심 로직 부분]
         if self._target_mac in result_dict:
-            # 목록에 있음 -> 바로 재실 처리하지 않고 카운트 체크
-            self.not_home_count = 0 # 외출 카운트는 리셋
+            device_info = result_dict[self._target_mac]
+            rss = device_info.get("rssi")
             
-            if self.home_count < self.home_threshold:
-                self.home_count += 1
-            
-            # 설정한 횟수만큼 연속으로 감지되었을 때만 상태 변경
-            if self.home_count >= self.home_threshold:
-                device_info = result_dict[self._target_mac]
-
-                rss = device_info.get("rssi")
-                if isinstance(rss, int):
-                    if rss < self.rss_limit:
-                        self._state = "not_home"
-                    else:
-                        self._state = "home"
-                else:
-                    self._state = device_info.get("state", "home")
+            is_connected_now = True
+            if isinstance(rss, int) and rss < self.rss_limit:
+                is_connected_now = False
                 
-                # 속성 업데이트
-                data.update({
-                    "stay_time": device_info.get("stay_time", "N/A"),
-                    "band": device_info.get("band", "N/A"),
-                    "ip": device_info.get("ip", "N/A"),
-                    "rssi": device_info.get("rssi", "N/A"),
-                })
-            # 아직 카운트가 부족하면 이전 상태 유지 (아무것도 안 함)
+            if is_connected_now:
+                self.not_home_count = 0 
+                if self.home_count < self.home_threshold:
+                    self.home_count += 1
+            else:
+                self.home_count = 0
+                if self.not_home_count < self.not_home_threshold:
+                    self.not_home_count += 1
+            
+            if self.home_count >= self.home_threshold:
+                self._state = "home"
+            elif self.not_home_count >= self.not_home_threshold:
+                self._state = "not_home"
+            elif self._state == "N/A" and is_connected_now:
+                 self._state = "home"  # 최초 연결 시 상태 초기화
+                
+            # 속성 업데이트
+            data.update({
+                "stay_time": device_info.get("stay_time", "N/A"),
+                "band": device_info.get("band", "N/A"),
+                "ip": device_info.get("ip", "N/A"),
+                "rssi": device_info.get("rssi", "N/A"),
+            })
             
         else:
             # 목록에 없음
@@ -446,7 +455,8 @@ class IPTimeSensor:
             
             if self.not_home_count < self.not_home_threshold:
                 self.not_home_count += 1
-            else:
+                
+            if self.not_home_count >= self.not_home_threshold:
                 self._state = "not_home"
             
             # (속성 N/A 처리 부분은 그대로 유지)
