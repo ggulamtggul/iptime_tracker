@@ -195,7 +195,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     _LOGGER.debug(f"Adding {len(entities)} entities.")
     async_add_entities(entities)
 
-    # Cleanup orphaned entities
+    # Cleanup orphaned entities and devices
     try:
         if tracked_macs is not None:
             entity_registry = er.async_get(hass)
@@ -232,6 +232,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                                     device_registry.async_remove_device(entity_entry.device_id)
                         except Exception as e:
                             _LOGGER.error(f"Failed to remove orphaned device {entity_entry.device_id}: {e}")
+
+            # Cleanup orphaned devices that might not have entities anymore
+            try:
+                device_entries = dr.async_entries_for_config_entry(device_registry, entry.entry_id)
+                for device in device_entries:
+                    is_router = False
+                    mac_from_device = None
+                    
+                    for identifier in device.identifiers:
+                        if len(identifier) >= 2 and identifier[0] == DOMAIN:
+                            if identifier[1] == entry.entry_id:
+                                is_router = True
+                                break
+                            else:
+                                mac_from_device = identifier[1]
+                    
+                    if not is_router and mac_from_device:
+                        mac_from_device_norm = mac_from_device.replace("-", "").replace(":", "").upper()
+                        if mac_from_device_norm not in tracked_macs_norm:
+                            _LOGGER.info(f"Removing orphaned device without entity: {device.id} ({mac_from_device})")
+                            device_registry.async_remove_device(device.id)
+            except Exception as e:
+                _LOGGER.error(f"Failed during orphaned device cleanup: {e}")
+
     except Exception as e:
         _LOGGER.error(f"Error during entity cleanup: {e}")
 
